@@ -93,7 +93,7 @@ class DataPreprocessor:
 
                 # Resample to hourly — numeric columns only
                 numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-                df_hourly = df[numeric_cols].resample("1H").mean()
+                df_hourly = df[numeric_cols].resample("1h").mean()
                 house_frames.append(df_hourly)
             except Exception as exc:
                 print(f"  [warn] Skipping {fp}: {exc}")
@@ -129,9 +129,9 @@ class DataPreprocessor:
             wdf["datetime"] = pd.to_datetime(wdf["datetime"], errors="coerce")
             wdf = wdf.dropna(subset=["datetime"]).sort_values("datetime")
             wdf = wdf.set_index("datetime")
-            # Resample weather to hourly too
+            # Weather data is daily — resample to hourly then forward-fill each day's values
             w_numeric = wdf.select_dtypes(include=[np.number]).columns.tolist()
-            wdf_hourly = wdf[w_numeric].resample("1H").mean()
+            wdf_hourly = wdf[w_numeric].resample("1h").mean().ffill()
 
             merged = city_hourly.join(wdf_hourly, how="left")
         else:

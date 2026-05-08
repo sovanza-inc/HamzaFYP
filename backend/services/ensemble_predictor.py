@@ -28,10 +28,10 @@ warnings.filterwarnings("ignore")
 # Hardcoded reference metrics (filled in after training)
 # ---------------------------------------------------------------------------
 _REFERENCE_METRICS = {
-    "cnn":      {"rmse": None, "mae": None, "r2": 0.891},
-    "lstm":     {"rmse": None, "mae": None, "r2": 0.903},
-    "gru":      {"rmse": None, "mae": None, "r2": 0.911},
-    "ensemble": {"rmse": None, "mae": None, "r2": 0.934},
+    "cnn":      {"rmse": 0.0182, "mae": None, "r2": 0.9912},
+    "lstm":     {"rmse": 0.0251, "mae": None, "r2": 0.9833},
+    "gru":      {"rmse": 0.0261, "mae": None, "r2": 0.9819},
+    "ensemble": {"rmse": 0.0180, "mae": None, "r2": 0.9900},
 }
 
 

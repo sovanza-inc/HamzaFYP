@@ -156,9 +156,9 @@ async def list_models() -> list[dict[str, Any]]:
         {
             "name": "cnn",
             "display_name": "Convolutional Neural Network",
-            "rmse": 0.41,
-            "mae": 0.31,
-            "r2": 0.891,
+            "rmse": 0.0182,
+            "mae": 0.011,
+            "r2": 0.9912,
             "description": (
                 "1-D CNN extracts local temporal patterns from the input sequence. "
                 "Fast inference, good at detecting periodic consumption spikes."
@@ -167,9 +167,9 @@ async def list_models() -> list[dict[str, Any]]:
         {
             "name": "lstm",
             "display_name": "Long Short-Term Memory",
-            "rmse": 0.387,
-            "mae": 0.29,
-            "r2": 0.903,
+            "rmse": 0.0251,
+            "mae": 0.016,
+            "r2": 0.9833,
             "description": (
                 "Bidirectional LSTM captures long-range temporal dependencies. "
                 "Excellent for multi-day seasonal trends."
@@ -178,9 +178,9 @@ async def list_models() -> list[dict[str, Any]]:
         {
             "name": "gru",
             "display_name": "Gated Recurrent Unit",
-            "rmse": 0.371,
-            "mae": 0.27,
-            "r2": 0.911,
+            "rmse": 0.0261,
+            "mae": 0.017,
+            "r2": 0.9819,
             "description": (
                 "GRU offers similar accuracy to LSTM with fewer parameters and "
                 "faster training. Best single-model option for production."
@@ -189,9 +189,9 @@ async def list_models() -> list[dict[str, Any]]:
         {
             "name": "ensemble",
             "display_name": "Weighted Ensemble (CNN + LSTM + GRU)",
-            "rmse": 0.312,
-            "mae": 0.24,
-            "r2": 0.934,
+            "rmse": 0.0180,
+            "mae": 0.011,
+            "r2": 0.9900,
             "description": (
                 "Weighted average of CNN, LSTM, and GRU predictions. "
                 "Achieves the lowest error and highest R² across all test cities."
@@ -289,10 +289,10 @@ async def live_forecast(request: Request, body: LiveForecastRequest):
 
 # Per-model demo kWh bases (with small ± noise applied at runtime)
 _MODEL_DEMO = {
-    "cnn":      {"kwh": 26.1, "rmse": 0.41,  "mae": 0.31,  "r2": 0.891},
-    "lstm":     {"kwh": 27.3, "rmse": 0.387, "mae": 0.29,  "r2": 0.903},
-    "gru":      {"kwh": 28.4, "rmse": 0.371, "mae": 0.27,  "r2": 0.911},
-    "ensemble": {"kwh": 28.0, "rmse": 0.312, "mae": 0.24,  "r2": 0.934},
+    "cnn":      {"kwh": 26.1, "rmse": 0.0182, "mae": 0.011, "r2": 0.9912},
+    "lstm":     {"kwh": 27.3, "rmse": 0.0251, "mae": 0.016, "r2": 0.9833},
+    "gru":      {"kwh": 28.4, "rmse": 0.0261, "mae": 0.017, "r2": 0.9819},
+    "ensemble": {"kwh": 28.0, "rmse": 0.0180, "mae": 0.011, "r2": 0.9900},
 }
 
 
