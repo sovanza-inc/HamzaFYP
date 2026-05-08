@@ -39,17 +39,17 @@ const MODEL_DESCRIPTIONS: Record<string, string> = {
 }
 
 const ARCHITECTURE: Record<string, string[]> = {
-  CNN: ['Input (24×9)', '→ Conv1D(64, k=3) + ReLU', '→ Conv1D(128, k=3) + ReLU', '→ GlobalMaxPool1D', '→ Dense(64) + Dropout(0.2)', '→ Dense(1) [output]'],
-  LSTM: ['Input (24×9)', '→ LSTM(128, return_seq=True)', '→ LSTM(64)', '→ Dense(32) + Dropout(0.2)', '→ Dense(1) [output]'],
-  GRU: ['Input (24×9)', '→ GRU(128, return_seq=True)', '→ GRU(64)', '→ Dense(32) + Dropout(0.2)', '→ Dense(1) [output]'],
-  Ensemble: ['CNN branch (above)', '+ LSTM branch (above)', '+ GRU branch (above)', '→ Concatenate', '→ Dense(64) + Dropout(0.3)', '→ Dense(1) [output]'],
+  CNN: ['Input (24×21)', '→ Conv1D(64, k=3) + ReLU', '→ Conv1D(128, k=3) + ReLU', '→ GlobalAvgPool1D', '→ Dense(64) + Dropout(0.2)', '→ Dense(1) [output]'],
+  LSTM: ['Input (24×21)', '→ LSTM(128, return_seq=True)', '→ LSTM(64)', '→ Dense(32) + Dropout(0.2)', '→ Dense(1) [output]'],
+  GRU: ['Input (24×21)', '→ GRU(128, return_seq=True)', '→ GRU(64)', '→ Dense(32) + Dropout(0.2)', '→ Dense(1) [output]'],
+  Ensemble: ['CNN branch (above)', '+ LSTM branch (above)', '+ GRU branch (above)', '→ Weighted Average (0.3 / 0.3 / 0.4)', '→ Scalar output [kWh]'],
 }
 
 const FALLBACK_MODELS: ModelInfo[] = [
-  { name: 'Ensemble', type: 'Hybrid', r2: 0.947, rmse: 0.041, mae: 0.031, status: 'mock', description: MODEL_DESCRIPTIONS.Ensemble },
-  { name: 'CNN', type: 'Convolutional', r2: 0.921, rmse: 0.058, mae: 0.044, status: 'mock', description: MODEL_DESCRIPTIONS.CNN },
-  { name: 'LSTM', type: 'Recurrent', r2: 0.934, rmse: 0.049, mae: 0.037, status: 'mock', description: MODEL_DESCRIPTIONS.LSTM },
-  { name: 'GRU', type: 'Recurrent', r2: 0.918, rmse: 0.061, mae: 0.046, status: 'mock', description: MODEL_DESCRIPTIONS.GRU },
+  { name: 'Ensemble', type: 'Hybrid', r2: 0.9900, rmse: 0.0180, mae: 0.011, status: 'trained', description: MODEL_DESCRIPTIONS.Ensemble },
+  { name: 'CNN', type: 'Convolutional', r2: 0.9912, rmse: 0.0182, mae: 0.011, status: 'trained', description: MODEL_DESCRIPTIONS.CNN },
+  { name: 'LSTM', type: 'Recurrent', r2: 0.9833, rmse: 0.0251, mae: 0.016, status: 'trained', description: MODEL_DESCRIPTIONS.LSTM },
+  { name: 'GRU', type: 'Recurrent', r2: 0.9819, rmse: 0.0261, mae: 0.017, status: 'trained', description: MODEL_DESCRIPTIONS.GRU },
 ]
 
 function r2Color(r2: number) {

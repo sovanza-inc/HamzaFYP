@@ -154,8 +154,11 @@ async def list_models() -> list[dict[str, Any]]:
     """Return metadata and accuracy metrics for every available model."""
     return [
         {
-            "name": "cnn",
+            "name": "CNN",
             "display_name": "Convolutional Neural Network",
+            "type": "Convolutional",
+            "trained": True,
+            "status": "trained",
             "rmse": 0.0182,
             "mae": 0.011,
             "r2": 0.9912,
@@ -165,8 +168,11 @@ async def list_models() -> list[dict[str, Any]]:
             ),
         },
         {
-            "name": "lstm",
+            "name": "LSTM",
             "display_name": "Long Short-Term Memory",
+            "type": "Recurrent",
+            "trained": True,
+            "status": "trained",
             "rmse": 0.0251,
             "mae": 0.016,
             "r2": 0.9833,
@@ -176,8 +182,11 @@ async def list_models() -> list[dict[str, Any]]:
             ),
         },
         {
-            "name": "gru",
+            "name": "GRU",
             "display_name": "Gated Recurrent Unit",
+            "type": "Recurrent",
+            "trained": True,
+            "status": "trained",
             "rmse": 0.0261,
             "mae": 0.017,
             "r2": 0.9819,
@@ -187,8 +196,11 @@ async def list_models() -> list[dict[str, Any]]:
             ),
         },
         {
-            "name": "ensemble",
+            "name": "Ensemble",
             "display_name": "Weighted Ensemble (CNN + LSTM + GRU)",
+            "type": "Hybrid",
+            "trained": True,
+            "status": "trained",
             "rmse": 0.0180,
             "mae": 0.011,
             "r2": 0.9900,
