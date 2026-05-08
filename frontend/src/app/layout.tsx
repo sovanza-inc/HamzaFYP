@@ -51,7 +51,8 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true },
   },
   icons: {
-    icon: '/favicon.ico',
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
   },
 }
 
@@ -63,14 +64,13 @@ export default function RootLayout({
   return (
     <html lang="en" className={`dark ${bricolage.variable}`}>
       <body className="bg-slate-950 text-white min-h-screen antialiased font-[family-name:var(--font-bricolage)]">
-        <div className="flex min-h-screen">
-          <Sidebar />
-          <main className="flex-1 ml-64 min-h-screen overflow-x-hidden">
-            <div className="p-6 lg:p-8 min-h-screen">
-              {children}
-            </div>
-          </main>
-        </div>
+        <Sidebar />
+        {/* Desktop: offset for fixed sidebar. Mobile: top padding for fixed header */}
+        <main className="md:ml-64 pt-14 md:pt-0 min-h-screen overflow-x-hidden">
+          <div className="p-4 sm:p-6 lg:p-8 min-h-screen">
+            {children}
+          </div>
+        </main>
       </body>
     </html>
   )
