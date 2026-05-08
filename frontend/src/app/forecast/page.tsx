@@ -13,6 +13,13 @@ import {
 import { getDemoForecast, getLiveForecast } from '@/src/lib/api'
 import ForecastChart from '@/src/components/ForecastChart'
 import ModelComparison from '@/src/components/ModelComparison'
+import WeatherWidget from '@/src/components/WeatherWidget'
+import ApplianceBreakdown from '@/src/components/ApplianceBreakdown'
+import EnergyTips from '@/src/components/EnergyTips'
+import WeeklyForecast from '@/src/components/WeeklyForecast'
+import DownloadButton from '@/src/components/DownloadButton'
+import { CardSkeleton, ChartSkeleton } from '@/src/components/Skeleton'
+import { useToast } from '@/src/components/Toast'
 
 const CITIES = ['Lahore', 'Karachi', 'Islamabad', 'Multan', 'Peshawar', 'Skardu']
 const MODELS = ['Ensemble', 'CNN', 'LSTM', 'GRU']
@@ -52,6 +59,7 @@ function MetricCard({
 }
 
 export default function ForecastPage() {
+  const { toast } = useToast()
   const [city, setCity] = useState('Lahore')
   const [model, setModel] = useState('Ensemble')
   const [useLive, setUseLive] = useState(false)
@@ -103,6 +111,7 @@ export default function ForecastPage() {
         city,
         model,
       })
+      toast('Forecast complete!', 'success')
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error'
       // Generate mock data on error so the UI is still useful
@@ -132,6 +141,9 @@ export default function ForecastPage() {
           Generate 24-hour energy consumption predictions for any supported Pakistani city
         </p>
       </div>
+
+      {/* Live Weather Widget */}
+      <WeatherWidget city={city} />
 
       {/* Configuration Card */}
       <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
@@ -258,6 +270,18 @@ export default function ForecastPage() {
         </div>
       )}
 
+      {/* Loading skeletons — shown while forecast is running */}
+      {loading && (
+        <div className="space-y-6 fade-in">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
+          </div>
+          <ChartSkeleton />
+        </div>
+      )}
+
       {/* Results */}
       {result && (
         <div className="space-y-6 fade-in">
@@ -270,37 +294,50 @@ export default function ForecastPage() {
             </p>
           </div>
 
-          {/* Metric Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <MetricCard
-              label="Predicted Daily Total"
-              value={result.predicted_daily_kwh?.toFixed(3) ?? '—'}
-              unit="kWh"
-              color="text-emerald-400"
-              sub="Sum of 24-hour forecast"
-            />
-            <MetricCard
-              label="Lower CI (avg)"
-              value={
-                result.lower_ci
-                  ? (result.lower_ci.reduce((a, b) => a + b, 0) / result.lower_ci.length).toFixed(3)
-                  : '—'
-              }
-              unit="kWh"
-              color="text-blue-400"
-              sub="95% confidence lower bound"
-            />
-            <MetricCard
-              label="Upper CI (avg)"
-              value={
-                result.upper_ci
-                  ? (result.upper_ci.reduce((a, b) => a + b, 0) / result.upper_ci.length).toFixed(3)
-                  : '—'
-              }
-              unit="kWh"
-              color="text-purple-400"
-              sub="95% confidence upper bound"
-            />
+          {/* Metric Cards + Download Button */}
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <MetricCard
+                label="Predicted Daily Total"
+                value={result.predicted_daily_kwh?.toFixed(3) ?? '—'}
+                unit="kWh"
+                color="text-emerald-400"
+                sub="Sum of 24-hour forecast"
+              />
+              <MetricCard
+                label="Lower CI (avg)"
+                value={
+                  result.lower_ci
+                    ? (result.lower_ci.reduce((a, b) => a + b, 0) / result.lower_ci.length).toFixed(3)
+                    : '—'
+                }
+                unit="kWh"
+                color="text-blue-400"
+                sub="95% confidence lower bound"
+              />
+              <MetricCard
+                label="Upper CI (avg)"
+                value={
+                  result.upper_ci
+                    ? (result.upper_ci.reduce((a, b) => a + b, 0) / result.upper_ci.length).toFixed(3)
+                    : '—'
+                }
+                unit="kWh"
+                color="text-purple-400"
+                sub="95% confidence upper bound"
+              />
+            </div>
+            {/* Download button — visible only once forecast has run */}
+            <div className="flex justify-end">
+              <DownloadButton
+                data={{
+                  predictions:   result.predictions,
+                  city:          result.city,
+                  model:         result.model,
+                  predicted_kwh: result.predicted_daily_kwh ?? 0,
+                }}
+              />
+            </div>
           </div>
 
           {/* Chart */}
@@ -311,6 +348,15 @@ export default function ForecastPage() {
             confidenceLower={result.lower_ci}
             confidenceUpper={result.upper_ci}
           />
+
+          {/* Appliance Breakdown */}
+          <ApplianceBreakdown city={result.city} predictions={result.predictions} />
+
+          {/* Energy Tips */}
+          <EnergyTips city={result.city} />
+
+          {/* Weekly Forecast */}
+          <WeeklyForecast city={result.city} />
 
           {/* Model Comparison */}
           <ModelComparison />

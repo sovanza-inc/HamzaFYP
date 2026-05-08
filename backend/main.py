@@ -117,10 +117,13 @@ app.add_middleware(
 from routers.forecast import router as forecast_router  # noqa: E402
 from routers.xai import router as xai_router            # noqa: E402
 from routers.rag import router as rag_router            # noqa: E402
+from routers import weather, tips                        # noqa: E402
 
 app.include_router(forecast_router, prefix="/api/forecast", tags=["Forecast"])
 app.include_router(xai_router,      prefix="/api/xai",      tags=["Explainability"])
 app.include_router(rag_router,      prefix="/api/rag",      tags=["RAG Chatbot"])
+app.include_router(weather.router,  prefix="/api/weather",  tags=["Weather"])
+app.include_router(tips.router,     prefix="/api/tips",     tags=["Tips"])
 
 # ---------------------------------------------------------------------------
 # Root / Health / Demo

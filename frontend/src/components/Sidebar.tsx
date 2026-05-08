@@ -12,12 +12,18 @@ import {
   Zap,
   Menu,
   X,
+  BarChart2,
+  History,
+  Brain,
 } from 'lucide-react'
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/forecast', label: 'Forecast', icon: TrendingUp },
   { href: '/explainability', label: 'Explainability', icon: Lightbulb },
+  { href: '/compare', label: 'Compare', icon: BarChart2 },
+  { href: '/history', label: 'History', icon: History },
+  { href: '/models', label: 'Models', icon: Brain },
   { href: '/qa-agent', label: 'Q&A Agent', icon: MessageSquare },
   { href: '/demo', label: 'Demo', icon: Play },
 ]

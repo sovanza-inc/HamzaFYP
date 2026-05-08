@@ -38,4 +38,28 @@ export const getRagStatus = () => API.get('/api/rag/status')
 
 export const getHealth = () => API.get('/health')
 
+export const compareModels = (city: string) =>
+  API.post('/api/forecast/compare', { city })
+
+export const getWeeklyForecast = (city: string) =>
+  API.get(`/api/forecast/weekly/${city}`)
+
+export const getForecastHistory = () =>
+  API.get('/api/forecast/history')
+
+export const clearForecastHistory = () =>
+  API.post('/api/forecast/history/clear')
+
+export const getCurrentWeather = (city: string) =>
+  API.get(`/api/weather/current/${city}`)
+
+export const getWeatherForecast = (city: string) =>
+  API.get(`/api/weather/forecast/${city}`)
+
+export const getTips = (city: string) =>
+  API.get(`/api/tips/${city}`)
+
+export const getTipsFromShap = (featureImportances: Array<{feature: string, importance: number}>, city: string) =>
+  API.post('/api/tips/from-shap', { feature_importances: featureImportances, city })
+
 export default API
