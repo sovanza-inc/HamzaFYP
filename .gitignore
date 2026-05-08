@@ -14,11 +14,9 @@ venv/
 env/
 *.so
 
-# ML model files (large binaries — train locally)
-backend/models/*.keras
+# ML model files
 backend/models/*.h5
-backend/models/*.pkl
-backend/data/processed/
+backend/data/processed/processed_data.npz
 backend/rag_index/faiss.index
 backend/data/demo_sequence.json
 
