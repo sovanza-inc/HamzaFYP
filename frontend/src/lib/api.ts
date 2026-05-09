@@ -41,6 +41,17 @@ export const getHealth = () => API.get('/health')
 export const compareModels = (city: string) =>
   API.post('/api/forecast/compare', { city })
 
+export const getRangeForecast = (city: string, startDate: string, endDate: string) =>
+  API.post('/api/forecast/range', { city, start_date: startDate, end_date: endDate })
+
+export const getInsights = (city: string, month: number) =>
+  API.post('/api/forecast/insights', { city, month })
+
+export const compareInsights = (
+  city1: string, month1: number, city2: string, month2: number,
+) =>
+  API.post('/api/forecast/compare-insights', { city1, month1, city2, month2 })
+
 export const getWeeklyForecast = (city: string) =>
   API.get(`/api/forecast/weekly/${city}`)
 

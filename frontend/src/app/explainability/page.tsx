@@ -1,142 +1,191 @@
 'use client'
 
 import { useState } from 'react'
-import { Lightbulb, RefreshCw, AlertCircle, ChevronDown, Info } from 'lucide-react'
-import { getShapGlobal, getShapLocal, getLime } from '@/src/lib/api'
-import { ShapBarChart, ShapWaterfallChart, LimeChart } from '@/src/components/XAIPanel'
-
-type Tab = 'global-shap' | 'local-shap' | 'lime'
+import {
+  Lightbulb,
+  RefreshCw,
+  AlertCircle,
+  Info,
+  GitCompareArrows,
+  Database,
+  Brain,
+  ArrowRight,
+  TrendingUp,
+  TrendingDown,
+  MapPin,
+  Calendar,
+  Play,
+  CheckCircle,
+} from 'lucide-react'
+import { compareInsights } from '@/src/lib/api'
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+  Legend,
+} from 'recharts'
 
 const MODELS = ['Ensemble', 'CNN', 'LSTM', 'GRU']
-
-// Mock data for offline / fallback display
-const MOCK_SHAP_GLOBAL = [
-  { feature: 'temperature', importance: 0.1823 },
-  { feature: 'lag_1h', importance: 0.1654 },
-  { feature: 'lag_24h', importance: 0.1421 },
-  { feature: 'solar_radiation', importance: 0.1187 },
-  { feature: 'lag_1d', importance: 0.0943 },
-  { feature: 'humidity', importance: 0.0812 },
-  { feature: 'hour_sin', importance: 0.0721 },
-  { feature: 'hour_cos', importance: 0.0634 },
-  { feature: 'is_weekend', importance: 0.0412 },
-  { feature: 'wind_speed', importance: 0.0393 },
+const CITIES = ['Lahore', 'Karachi', 'Islamabad', 'Multan', 'Peshawar', 'Skardu']
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
 ]
 
-const MOCK_SHAP_LOCAL = [
-  { feature: 'temperature', shap_value: 0.0842, direction: 'positive' },
-  { feature: 'lag_1h', shap_value: 0.0731, direction: 'positive' },
-  { feature: 'solar_radiation', shap_value: -0.0612, direction: 'negative' },
-  { feature: 'lag_24h', shap_value: 0.0521, direction: 'positive' },
-  { feature: 'humidity', shap_value: -0.0487, direction: 'negative' },
-  { feature: 'lag_1d', shap_value: 0.0341, direction: 'positive' },
-  { feature: 'hour_sin', shap_value: -0.0298, direction: 'negative' },
-  { feature: 'is_weekend', shap_value: -0.0187, direction: 'negative' },
-]
+interface FactorEntry {
+  feature: string
+  importance: number
+  direction: string
+  explanation: string
+}
+interface InsightSide {
+  city: string
+  month: number
+  month_name: string
+  season: string
+  drivers: string[]
+  avg_daily_kwh: number
+  peak_daily_kwh: number
+  lowest_daily_kwh: number
+  monthly_total_kwh: number
+  city_baseline_kwh: number
+  factors: FactorEntry[]
+}
+interface CompareInsightsResponse {
+  a: InsightSide
+  b: InsightSide
+  diff_kwh: number
+  diff_pct: number
+  higher: string
+  lower: string
+  narrative: string
+  factor_diffs: Array<{ feature: string; delta_importance: number; winner: string; note: string }>
+  data_sources: string[]
+  model_summary: string
+}
 
-const MOCK_LIME = [
-  { feature: 'temperature > 35°C', weight: 0.0934 },
-  { feature: 'lag_1h > 0.6 kWh', weight: 0.0821 },
-  { feature: 'solar_radiation low', weight: -0.0712 },
-  { feature: 'lag_24h > 0.55', weight: 0.0634 },
-  { feature: 'humidity > 70%', weight: -0.0521 },
-  { feature: 'is_weekend = True', weight: -0.0398 },
-  { feature: 'hour_cos > 0.5', weight: -0.0312 },
-  { feature: 'wind_speed < 10', weight: 0.0287 },
-]
+function SidePanel({
+  side,
+  color,
+  isHigher,
+}: {
+  side: InsightSide
+  color: 'emerald' | 'blue'
+  isHigher: boolean
+}) {
+  const bg = color === 'emerald' ? 'bg-emerald-500/5 border-emerald-500/30' : 'bg-blue-500/5 border-blue-500/30'
+  const accent = color === 'emerald' ? 'text-emerald-400' : 'text-blue-400'
+  return (
+    <div className={`rounded-xl border p-5 ${bg}`}>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <div className={`text-sm font-bold ${accent} flex items-center gap-1.5`}>
+            <MapPin className="w-3.5 h-3.5" /> {side.city}
+          </div>
+          <div className="text-white text-lg font-semibold mt-0.5">{side.month_name}</div>
+          <div className="text-xs text-slate-500">Season: {side.season}</div>
+        </div>
+        {isHigher && (
+          <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 flex items-center gap-1">
+            <TrendingUp className="w-3 h-3" /> Higher
+          </span>
+        )}
+        {!isHigher && (
+          <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+            <TrendingDown className="w-3 h-3" /> Lower
+          </span>
+        )}
+      </div>
 
-const TAB_LABELS: { id: Tab; label: string; description: string }[] = [
-  {
-    id: 'global-shap',
-    label: 'Global SHAP',
-    description: 'Average feature importance across all predictions',
-  },
-  {
-    id: 'local-shap',
-    label: 'Local SHAP',
-    description: 'SHAP values for a specific prediction instance',
-  },
-  {
-    id: 'lime',
-    label: 'LIME',
-    description: 'Local linear approximation explanation',
-  },
-]
+      <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="bg-slate-800/60 rounded-lg p-2.5">
+          <div className="text-[10px] text-slate-500 uppercase tracking-wider">Avg/day</div>
+          <div className="text-white font-bold text-lg">{side.avg_daily_kwh.toFixed(2)}</div>
+          <div className="text-[10px] text-slate-500">kWh</div>
+        </div>
+        <div className="bg-slate-800/60 rounded-lg p-2.5">
+          <div className="text-[10px] text-slate-500 uppercase tracking-wider">Peak</div>
+          <div className="text-white font-bold text-lg">{side.peak_daily_kwh.toFixed(2)}</div>
+          <div className="text-[10px] text-slate-500">kWh</div>
+        </div>
+        <div className="bg-slate-800/60 rounded-lg p-2.5">
+          <div className="text-[10px] text-slate-500 uppercase tracking-wider">Monthly</div>
+          <div className="text-white font-bold text-lg">{(side.monthly_total_kwh / 1000).toFixed(2)}k</div>
+          <div className="text-[10px] text-slate-500">kWh</div>
+        </div>
+      </div>
+
+      <div>
+        <div className="text-xs text-slate-400 font-medium mb-2">Top drivers</div>
+        <div className="flex flex-wrap gap-1.5">
+          {side.drivers.map((d) => (
+            <span
+              key={d}
+              className="text-xs px-2 py-0.5 rounded-full bg-slate-700 text-slate-300 border border-slate-600"
+            >
+              {d}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function ExplainabilityPage() {
-  const [activeTab, setActiveTab] = useState<Tab>('global-shap')
   const [model, setModel] = useState('Ensemble')
-  const [instanceIdx, setInstanceIdx] = useState(0)
+  const [city1, setCity1] = useState('Lahore')
+  const [month1, setMonth1] = useState(7) // July
+  const [city2, setCity2] = useState('Skardu')
+  const [month2, setMonth2] = useState(1) // January
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [data, setData] = useState<CompareInsightsResponse | null>(null)
 
-  // Data states
-  const [shapGlobalData, setShapGlobalData] = useState<
-    Array<{ feature: string; importance: number }>
-  >(MOCK_SHAP_GLOBAL)
-  const [shapLocalData, setShapLocalData] = useState<
-    Array<{ feature: string; shap_value: number; direction: string }>
-  >(MOCK_SHAP_LOCAL)
-  const [limeData, setLimeData] = useState<Array<{ feature: string; weight: number }>>(MOCK_LIME)
-
-  const [computed, setComputed] = useState(false)
-
-  // Mock input sequence for API calls
-  const MOCK_INPUT = Array.from({ length: 24 }, () =>
-    Array.from({ length: 10 }, () => Math.random())
-  )
-  const FEATURE_NAMES = [
-    'temperature',
-    'humidity',
-    'solar_radiation',
-    'wind_speed',
-    'lag_1h',
-    'lag_24h',
-    'lag_1d',
-    'hour_sin',
-    'hour_cos',
-    'is_weekend',
-  ]
-
-  const handleCompute = async () => {
+  const handleRun = async () => {
     setLoading(true)
     setError(null)
-
+    setData(null)
     try {
-      if (activeTab === 'global-shap') {
-        const res = await getShapGlobal(model)
-        const raw = res.data?.shap_values || res.data?.feature_importance || res.data
-        if (Array.isArray(raw)) {
-          setShapGlobalData(raw)
-        }
-      } else if (activeTab === 'local-shap') {
-        const res = await getShapLocal(model, instanceIdx, MOCK_INPUT)
-        const raw = res.data?.shap_values || res.data
-        if (Array.isArray(raw)) {
-          setShapLocalData(raw)
-        }
-      } else {
-        const res = await getLime(model, MOCK_INPUT, FEATURE_NAMES)
-        const raw = res.data?.lime_weights || res.data
-        if (Array.isArray(raw)) {
-          setLimeData(raw)
-        }
-      }
-      setComputed(true)
-    } catch {
-      setError('Backend unreachable — showing pre-computed example data.')
-      setComputed(true)
+      const res = await compareInsights(city1, month1, city2, month2)
+      setData(res.data as CompareInsightsResponse)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown error'
+      setError(`Backend unreachable: ${msg}`)
     } finally {
       setLoading(false)
     }
   }
 
-  const buttonLabel =
-    activeTab === 'global-shap'
-      ? 'Compute Global SHAP'
-      : activeTab === 'local-shap'
-      ? 'Explain Instance'
-      : 'Compute LIME'
+  const aIsHigher = data ? data.a.avg_daily_kwh >= data.b.avg_daily_kwh : false
+
+  // Build chart data from factor importances
+  const factorChartData = data
+    ? data.a.factors.map((fa) => {
+        const fb = data.b.factors.find((f) => f.feature === fa.feature)
+        return {
+          feature: fa.feature,
+          [`${data.a.city} · ${data.a.month_name}`]: fa.importance,
+          [`${data.b.city} · ${data.b.month_name}`]: fb?.importance ?? 0,
+        }
+      })
+    : []
+
+  const consumptionChartData = data
+    ? [
+        { metric: 'Avg Daily',  [data.a.city + ' ' + data.a.month_name]: data.a.avg_daily_kwh,  [data.b.city + ' ' + data.b.month_name]: data.b.avg_daily_kwh },
+        { metric: 'Peak Day',   [data.a.city + ' ' + data.a.month_name]: data.a.peak_daily_kwh, [data.b.city + ' ' + data.b.month_name]: data.b.peak_daily_kwh },
+        { metric: 'Lowest Day', [data.a.city + ' ' + data.a.month_name]: data.a.lowest_daily_kwh, [data.b.city + ' ' + data.b.month_name]: data.b.lowest_daily_kwh },
+      ]
+    : []
+
+  const aLabel = data ? `${data.a.city} · ${data.a.month_name}` : ''
+  const bLabel = data ? `${data.b.city} · ${data.b.month_name}` : ''
 
   return (
     <div className="space-y-8 fade-in">
@@ -144,162 +193,350 @@ export default function ExplainabilityPage() {
       <div>
         <h1 className="text-2xl font-bold text-white">Explainability</h1>
         <p className="text-slate-400 mt-1">
-          Understand what drives predictions using SHAP and LIME techniques
+          Compare any two cities and months — see what drives the difference and why the model predicts what it predicts
         </p>
       </div>
 
-      {/* Info Banner */}
-      <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 flex items-start gap-3">
-        <Info className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
-        <div>
-          <p className="text-blue-400 text-sm font-medium">About XAI Methods</p>
-          <p className="text-blue-400/70 text-xs mt-1">
-            <strong>SHAP</strong> (SHapley Additive exPlanations) attributes each feature&apos;s
-            contribution to the prediction. <strong>LIME</strong> (Local Interpretable
-            Model-agnostic Explanations) builds a local linear approximation around each prediction.
-            Pre-computed example data is shown below — click &quot;Compute&quot; to run live analysis.
-          </p>
+      {/* Configuration */}
+      <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
+        <div className="flex items-center gap-2 mb-5">
+          <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+            <GitCompareArrows className="w-5 h-5 text-emerald-400" />
+          </div>
+          <div>
+            <h2 className="text-white font-semibold">Configure Comparison</h2>
+            <p className="text-xs text-slate-500">Pick a model, then two (city, month) pairs to analyze side-by-side</p>
+          </div>
         </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+          {/* Model */}
+          <div>
+            <label className="text-xs text-slate-400 font-medium mb-1.5 flex items-center gap-1">
+              <Brain className="w-3 h-3" /> Model
+            </label>
+            <select
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              className="w-full bg-slate-700 border border-slate-600 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30"
+            >
+              {MODELS.map((m) => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Side A */}
+          <div>
+            <label className="text-xs text-emerald-400 font-medium mb-1.5 flex items-center gap-1">
+              <MapPin className="w-3 h-3" /> City A
+            </label>
+            <select
+              value={city1}
+              onChange={(e) => setCity1(e.target.value)}
+              className="w-full bg-slate-700 border border-emerald-500/30 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500"
+            >
+              {CITIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-xs text-emerald-400 font-medium mb-1.5 flex items-center gap-1">
+              <Calendar className="w-3 h-3" /> Month A
+            </label>
+            <select
+              value={month1}
+              onChange={(e) => setMonth1(parseInt(e.target.value))}
+              className="w-full bg-slate-700 border border-emerald-500/30 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500"
+            >
+              {MONTHS.map((m, i) => (
+                <option key={m} value={i + 1}>{m}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Side B */}
+          <div>
+            <label className="text-xs text-blue-400 font-medium mb-1.5 flex items-center gap-1">
+              <MapPin className="w-3 h-3" /> City B
+            </label>
+            <select
+              value={city2}
+              onChange={(e) => setCity2(e.target.value)}
+              className="w-full bg-slate-700 border border-blue-500/30 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-blue-500"
+            >
+              {CITIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-xs text-blue-400 font-medium mb-1.5 flex items-center gap-1">
+              <Calendar className="w-3 h-3" /> Month B
+            </label>
+            <select
+              value={month2}
+              onChange={(e) => setMonth2(parseInt(e.target.value))}
+              className="w-full bg-slate-700 border border-blue-500/30 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-blue-500"
+            >
+              {MONTHS.map((m, i) => (
+                <option key={m} value={i + 1}>{m}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="mt-5 flex items-center justify-between flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2 text-xs text-slate-500">
+            <span>Quick presets:</span>
+            <button
+              onClick={() => { setCity1('Lahore'); setMonth1(7); setCity2('Lahore'); setMonth2(1) }}
+              className="px-2.5 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-300"
+            >
+              Lahore: Summer vs Winter
+            </button>
+            <button
+              onClick={() => { setCity1('Karachi'); setMonth1(7); setCity2('Skardu'); setMonth2(7) }}
+              className="px-2.5 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-300"
+            >
+              Coast vs Mountain (July)
+            </button>
+            <button
+              onClick={() => { setCity1('Multan'); setMonth1(6); setCity2('Islamabad'); setMonth2(6) }}
+              className="px-2.5 py-0.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-300"
+            >
+              Hot south vs Capital (June)
+            </button>
+          </div>
+          <button
+            onClick={handleRun}
+            disabled={loading}
+            className="bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg px-5 py-2.5 text-sm font-semibold flex items-center gap-2 transition-colors"
+          >
+            {loading ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" /> Running...
+              </>
+            ) : (
+              <>
+                <Play className="w-4 h-4" /> Run Analysis
+              </>
+            )}
+          </button>
+        </div>
+
+        {error && (
+          <div className="mt-4 bg-red-500/10 border border-red-500/20 rounded-lg p-3 flex items-center gap-2 text-sm text-red-400">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            {error}
+          </div>
+        )}
       </div>
 
-      {/* Tabs */}
-      <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-        {/* Tab Bar */}
-        <div className="flex border-b border-slate-700">
-          {TAB_LABELS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => {
-                setActiveTab(tab.id)
-                setError(null)
-              }}
-              className={`flex-1 px-5 py-4 text-sm font-medium transition-colors text-center ${
-                activeTab === tab.id
-                  ? 'bg-slate-700/50 text-emerald-400 border-b-2 border-emerald-500'
-                  : 'text-slate-400 hover:text-slate-300 hover:bg-slate-700/30'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Tab description */}
-        <div className="px-5 py-3 bg-slate-900/50 border-b border-slate-700">
-          <p className="text-slate-400 text-xs">
-            {TAB_LABELS.find((t) => t.id === activeTab)?.description}
+      {!data && !loading && (
+        <div className="bg-slate-800/60 border border-dashed border-slate-700 rounded-xl p-8 text-center">
+          <Lightbulb className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+          <p className="text-slate-400 text-sm font-medium">Pick two (city, month) pairs and click Run Analysis</p>
+          <p className="text-slate-500 text-xs mt-1">
+            Try presets above — Lahore Summer vs Winter is a great starting point
           </p>
         </div>
+      )}
 
-        {/* Tab Controls */}
-        <div className="p-5">
-          <div className="flex flex-wrap items-end gap-4 mb-5">
-            {/* Model Selector */}
-            <div>
-              <label className="text-xs text-slate-400 font-medium block mb-1.5">Model</label>
-              <div className="relative">
-                <select
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  className="bg-slate-700 border border-slate-600 text-white rounded-lg px-3 py-2.5 text-sm appearance-none focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 pr-8 min-w-[140px]"
-                >
-                  {MODELS.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
+      {data && (
+        <>
+          {/* Side-by-side panels */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <SidePanel side={data.a} color="emerald" isHigher={aIsHigher} />
+            <SidePanel side={data.b} color="blue" isHigher={!aIsHigher} />
+          </div>
+
+          {/* Headline difference */}
+          <div className="bg-gradient-to-r from-emerald-500/10 to-blue-500/10 border border-slate-700 rounded-xl p-5">
+            <div className="flex items-center gap-2 text-xs text-slate-400 uppercase tracking-wider font-semibold mb-2">
+              <CheckCircle className="w-4 h-4 text-emerald-400" />
+              Difference
             </div>
-
-            {/* Instance Index (Local SHAP only) */}
-            {activeTab === 'local-shap' && (
-              <div>
-                <label className="text-xs text-slate-400 font-medium block mb-1.5">
-                  Instance Index
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  max={999}
-                  value={instanceIdx}
-                  onChange={(e) => setInstanceIdx(parseInt(e.target.value) || 0)}
-                  className="bg-slate-700 border border-slate-600 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 w-32"
-                />
-              </div>
-            )}
-
-            {/* Compute Button */}
-            <button
-              onClick={handleCompute}
-              disabled={loading}
-              className="bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg px-5 py-2.5 text-sm font-semibold flex items-center gap-2 transition-colors"
-            >
-              {loading ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  Computing...
-                </>
-              ) : (
-                <>
-                  <Lightbulb className="w-4 h-4" />
-                  {buttonLabel}
-                </>
-              )}
-            </button>
-
-            {computed && !loading && (
-              <span className="text-xs text-emerald-400 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
-                {error ? 'Example data' : 'Live computation'}
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-3xl font-bold text-white">{Math.abs(data.diff_pct).toFixed(1)}%</span>
+              <ArrowRight className="w-5 h-5 text-slate-500" />
+              <span className="text-emerald-400 font-semibold">{data.higher}</span>
+              <span className="text-slate-500">consumes more than</span>
+              <span className="text-blue-400 font-semibold">{data.lower}</span>
+              <span className="text-slate-500 text-sm">
+                (Δ {Math.abs(data.diff_kwh).toFixed(2)} kWh/day)
               </span>
+            </div>
+          </div>
+
+          {/* Consumption comparison chart */}
+          <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
+            <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-emerald-400" />
+              Consumption Comparison
+            </h3>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={consumptionChartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                <XAxis dataKey="metric" stroke="#94a3b8" tick={{ fontSize: 11 }} />
+                <YAxis stroke="#94a3b8" tick={{ fontSize: 11 }} unit=" kWh" />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#1e293b',
+                    border: '1px solid #334155',
+                    borderRadius: '8px',
+                    color: '#e2e8f0',
+                    fontSize: '12px',
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: '12px' }} />
+                <Bar dataKey={aLabel} fill="#10b981" radius={[6, 6, 0, 0]} />
+                <Bar dataKey={bLabel} fill="#3b82f6" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Factor importance comparison */}
+          <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
+            <h3 className="text-white font-semibold mb-1 flex items-center gap-2">
+              <Brain className="w-4 h-4 text-purple-400" />
+              Which factors drive the difference
+            </h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Feature attribution from the {model} model — taller bars matter more for predictions in that period
+            </p>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={factorChartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                <XAxis dataKey="feature" stroke="#94a3b8" tick={{ fontSize: 11 }} angle={-15} textAnchor="end" height={50} />
+                <YAxis stroke="#94a3b8" tick={{ fontSize: 11 }} domain={[0, 0.4]} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#1e293b',
+                    border: '1px solid #334155',
+                    borderRadius: '8px',
+                    color: '#e2e8f0',
+                    fontSize: '12px',
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: '12px' }} />
+                <Bar dataKey={`${data.a.city} · ${data.a.month_name}`} fill="#10b981" radius={[4, 4, 0, 0]} />
+                <Bar dataKey={`${data.b.city} · ${data.b.month_name}`} fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+
+            {data.factor_diffs.length > 0 && (
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+                {data.factor_diffs.map((fd) => (
+                  <div key={fd.feature} className="bg-slate-700/40 rounded-lg p-3 border border-slate-600/40">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-emerald-400 text-xs font-bold uppercase">{fd.feature}</span>
+                      <span className="text-[10px] text-slate-500">{fd.winner}</span>
+                    </div>
+                    <p className="text-xs text-slate-300">{fd.note}</p>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 
-          {/* Error */}
-          {error && (
-            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 flex items-center gap-2 mb-4">
-              <AlertCircle className="w-4 h-4 text-yellow-400 shrink-0" />
-              <p className="text-yellow-400 text-xs">{error}</p>
-            </div>
-          )}
+          {/* Narrative explanation */}
+          <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
+            <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
+              <Lightbulb className="w-4 h-4 text-amber-400" />
+              Why the difference?
+            </h3>
+            <p className="text-slate-300 text-sm leading-relaxed">{data.narrative}</p>
+          </div>
 
-          {/* Chart */}
-          {activeTab === 'global-shap' && <ShapBarChart data={shapGlobalData} />}
-          {activeTab === 'local-shap' && <ShapWaterfallChart data={shapLocalData} />}
-          {activeTab === 'lime' && <LimeChart data={limeData} />}
-        </div>
-      </div>
+          {/* Per-side factor explanations */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[data.a, data.b].map((side, idx) => (
+              <div
+                key={idx}
+                className={`rounded-xl border p-5 ${
+                  idx === 0 ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-blue-500/5 border-blue-500/20'
+                }`}
+              >
+                <h4 className={`font-semibold mb-3 ${idx === 0 ? 'text-emerald-400' : 'text-blue-400'}`}>
+                  {side.city} · {side.month_name} — Top factor explanations
+                </h4>
+                <div className="space-y-2.5">
+                  {side.factors.slice(0, 4).map((f) => (
+                    <div key={f.feature} className="bg-slate-800/60 rounded-lg p-3 border border-slate-700/50">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                          {f.feature}
+                        </span>
+                        <span className="text-xs text-slate-500">
+                          {(f.importance * 100).toFixed(1)}%
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 leading-relaxed">{f.explanation}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
 
-      {/* Feature Description */}
-      <div className="bg-slate-800 rounded-xl border border-slate-700 p-5">
-        <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-          <Info className="w-4 h-4 text-blue-400" />
-          Feature Descriptions
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {[
-            { name: 'temperature', desc: 'Hourly temperature in °C' },
-            { name: 'humidity', desc: 'Relative humidity (%)' },
-            { name: 'solar_radiation', desc: 'Solar irradiance (W/m²)' },
-            { name: 'wind_speed', desc: 'Wind speed (km/h)' },
-            { name: 'lag_1h', desc: 'Energy consumption 1 hour ago' },
-            { name: 'lag_24h', desc: 'Energy consumption 24 hours ago' },
-            { name: 'lag_1d', desc: 'Smoothed daily lag consumption' },
-            { name: 'hour_sin', desc: 'Sine encoding of hour of day' },
-            { name: 'hour_cos', desc: 'Cosine encoding of hour of day' },
-            { name: 'is_weekend', desc: 'Binary weekend indicator' },
-          ].map((f) => (
-            <div key={f.name} className="flex items-start gap-2 p-3 bg-slate-700/50 rounded-lg">
-              <span className="text-xs font-mono text-emerald-400 font-semibold shrink-0 mt-0.5 min-w-[90px]">
-                {f.name}
-              </span>
-              <span className="text-xs text-slate-400">{f.desc}</span>
+          {/* Data sources & model info */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
+              <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
+                <Database className="w-4 h-4 text-blue-400" />
+                Where the data comes from
+              </h3>
+              <ul className="space-y-2.5">
+                {data.data_sources.map((src, i) => (
+                  <li key={i} className="flex items-start gap-2 text-xs text-slate-400">
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                    <span>{src}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
-          ))}
-        </div>
-      </div>
+
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
+              <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
+                <Brain className="w-4 h-4 text-purple-400" />
+                How the model produces results
+              </h3>
+              <p className="text-xs text-slate-400 leading-relaxed mb-3">{data.model_summary}</p>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="bg-slate-700/40 rounded-lg p-2 border border-slate-600/40">
+                  <div className="text-emerald-400 text-sm font-bold">CNN</div>
+                  <div className="text-[10px] text-slate-500">w=0.3 · R²=0.99</div>
+                </div>
+                <div className="bg-slate-700/40 rounded-lg p-2 border border-slate-600/40">
+                  <div className="text-emerald-400 text-sm font-bold">LSTM</div>
+                  <div className="text-[10px] text-slate-500">w=0.3 · R²=0.98</div>
+                </div>
+                <div className="bg-slate-700/40 rounded-lg p-2 border border-slate-600/40">
+                  <div className="text-emerald-400 text-sm font-bold">GRU</div>
+                  <div className="text-[10px] text-slate-500">w=0.4 · R²=0.98</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Info banner with definitions */}
+          <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 flex items-start gap-3">
+            <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+            <div className="text-xs text-slate-300 leading-relaxed">
+              <span className="text-blue-400 font-semibold">How to read this:</span> Each factor&apos;s
+              importance shows how much that feature shifted the model&apos;s prediction for that
+              (city, month). A higher value for <span className="font-mono text-emerald-400">temperature</span> in
+              summer months simply means the model relies on temperature more when temperatures are extreme.
+              The lag features (<span className="font-mono">lag_1d</span>, <span className="font-mono">rolling_mean_7d</span>)
+              encode recent consumption history, which is why predictions stay smooth across consecutive days.
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

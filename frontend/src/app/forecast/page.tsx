@@ -10,7 +10,7 @@ import {
   CheckCircle,
   ChevronDown,
 } from 'lucide-react'
-import { getDemoForecast, getLiveForecast } from '@/src/lib/api'
+import { getLiveForecast, compareModels } from '@/src/lib/api'
 import ForecastChart from '@/src/components/ForecastChart'
 import ModelComparison from '@/src/components/ModelComparison'
 import WeatherWidget from '@/src/components/WeatherWidget'
@@ -73,45 +73,49 @@ export default function ForecastPage() {
     setResult(null)
 
     try {
-      let res
+      let predictions: number[] = []
+      let dailyKwh = 0
+
       if (useLive) {
-        res = await getLiveForecast(city, model)
+        // Live mode — fetch real weather and run the selected model
+        const res = await getLiveForecast(city, model)
+        const data = res.data
+        predictions =
+          data?.hourly_predictions ||
+          data?.predictions ||
+          Array.from({ length: 24 }, (_, i) =>
+            parseFloat((0.42 + Math.sin((i * Math.PI) / 12) * 0.28).toFixed(4))
+          )
+        dailyKwh = data?.predicted_kwh ?? predictions.reduce((s, v) => s + v, 0)
       } else {
-        res = await getDemoForecast()
+        // Dataset mode — use the integrated comparison endpoint to get a
+        // city- and model-specific prediction grounded in training data
+        const res = await compareModels(city)
+        const allResults = (res.data?.results ?? []) as Array<{
+          model: string
+          predicted_kwh: number
+          hourly_predictions: number[]
+        }>
+        const modelKey = model.toLowerCase()
+        const modelResult =
+          allResults.find((r) => r.model.toLowerCase() === modelKey) || allResults[0]
+        if (!modelResult) throw new Error('No model results returned by API')
+        predictions = modelResult.hourly_predictions
+        dailyKwh = modelResult.predicted_kwh
       }
 
-      const data = res.data
-
-      // Normalize different response shapes
-      const predictions: number[] =
-        data?.predictions ||
-        data?.forecast ||
-        data?.data?.predictions ||
-        Array.from({ length: 24 }, (_, i) =>
-          parseFloat((0.42 + Math.sin((i * Math.PI) / 12) * 0.28 + Math.random() * 0.04).toFixed(4))
-        )
-
-      const lower: number[] | undefined =
-        data?.lower_ci ||
-        data?.confidence_lower ||
-        predictions.map((v) => parseFloat((v * 0.92).toFixed(4)))
-
-      const upper: number[] | undefined =
-        data?.upper_ci ||
-        data?.confidence_upper ||
-        predictions.map((v) => parseFloat((v * 1.08).toFixed(4)))
-
-      const dailyTotal = predictions.reduce((s, v) => s + v, 0)
+      const lower = predictions.map((v) => parseFloat((v * 0.92).toFixed(4)))
+      const upper = predictions.map((v) => parseFloat((v * 1.08).toFixed(4)))
 
       setResult({
         predictions,
         lower_ci: lower,
         upper_ci: upper,
-        predicted_daily_kwh: parseFloat(dailyTotal.toFixed(3)),
+        predicted_daily_kwh: parseFloat(dailyKwh.toFixed(3)),
         city,
         model,
       })
-      toast('Forecast complete!', 'success')
+      toast(`${city} · ${model} forecast ready`, 'success')
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error'
       // Generate mock data on error so the UI is still useful
