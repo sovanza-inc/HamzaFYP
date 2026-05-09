@@ -31,15 +31,25 @@ export const getShapLocal = (model: string, instanceIdx: number, inputSequence: 
 export const getLime = (model: string, inputSequence: number[][], featureNames: string[]) =>
   API.post('/api/xai/lime', { model, input_sequence: inputSequence, feature_names: featureNames })
 
-export const queryRAG = (question: string, history: Array<{ role: string; content: string }>) =>
-  API.post('/api/rag/query', { question, conversation_history: history })
+export const queryRAG = (
+  question: string,
+  history: Array<{ role: string; content: string }>,
+  apiKey?: string,
+) =>
+  API.post('/api/rag/query', {
+    question,
+    conversation_history: history,
+    ...(apiKey ? { api_key: apiKey } : {}),
+  })
+
+export const getAccuracy = () => API.get('/api/forecast/accuracy')
 
 export const getRagStatus = () => API.get('/api/rag/status')
 
 export const getHealth = () => API.get('/health')
 
-export const compareModels = (city: string) =>
-  API.post('/api/forecast/compare', { city })
+export const compareModels = (city: string, date?: string) =>
+  API.post('/api/forecast/compare', { city, date })
 
 export const getRangeForecast = (city: string, startDate: string, endDate: string) =>
   API.post('/api/forecast/range', { city, start_date: startDate, end_date: endDate })

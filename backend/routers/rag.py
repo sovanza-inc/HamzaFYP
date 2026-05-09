@@ -52,6 +52,10 @@ class RAGQuery(BaseModel):
         default=None,
         description="Optional topic filter, e.g. 'solar', 'load_shedding', 'efficiency'.",
     )
+    api_key: str | None = Field(
+        default=None,
+        description="Anthropic API key — overrides the server's ANTHROPIC_API_KEY.",
+    )
 
 
 class RAGResponse(BaseModel):
@@ -118,10 +122,18 @@ async def rag_query(request: Request, body: RAGQuery):
             model_used="unavailable",
         )
 
+    # If the client supplied an API key, set it on the env so the engine picks
+    # it up. Restore the previous value after the request completes so we don't
+    # mutate global state across users.
+    prev_key = os.environ.get("ANTHROPIC_API_KEY")
+    if body.api_key:
+        os.environ["ANTHROPIC_API_KEY"] = body.api_key
+        # Reset client lazily on the engine so it re-initialises with the new key
+        if hasattr(rag, "client"):
+            rag.client = None
+
     try:
         import asyncio
-        # RAGEngine.answer() is synchronous — run it in a thread pool to avoid
-        # blocking the event loop during the Anthropic API call.
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(
             None,
@@ -143,6 +155,13 @@ async def rag_query(request: Request, body: RAGQuery):
             status_code=500,
             detail=f"RAG query failed: {exc}. Ensure ANTHROPIC_API_KEY is set correctly.",
         ) from exc
+    finally:
+        # Restore previous API key on the env so per-request keys don't leak
+        if body.api_key:
+            if prev_key is None:
+                os.environ.pop("ANTHROPIC_API_KEY", None)
+            else:
+                os.environ["ANTHROPIC_API_KEY"] = prev_key
 
 
 @router.post("/index", response_model=IndexRebuildResponse, summary="Rebuild FAISS knowledge base")

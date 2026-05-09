@@ -9,6 +9,10 @@ import {
   User,
   AlertCircle,
   BookOpen,
+  Key,
+  Eye,
+  EyeOff,
+  Check,
 } from 'lucide-react'
 import { queryRAG } from '@/src/lib/api'
 
@@ -113,12 +117,33 @@ export default function QaAgentPage() {
   const [typing, setTyping] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [history, setHistory] = useState<HistoryItem[]>([])
+  const [apiKey, setApiKey] = useState('')
+  const [showKey, setShowKey] = useState(false)
+  const [keySaved, setKeySaved] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, typing])
+
+  useEffect(() => {
+    const stored = localStorage.getItem('anthropic_api_key')
+    if (stored) {
+      setApiKey(stored)
+      setKeySaved(true)
+    }
+  }, [])
+
+  const handleSaveKey = () => {
+    if (apiKey.trim()) {
+      localStorage.setItem('anthropic_api_key', apiKey.trim())
+      setKeySaved(true)
+    } else {
+      localStorage.removeItem('anthropic_api_key')
+      setKeySaved(false)
+    }
+  }
 
   const sendMessage = async (question: string) => {
     if (!question.trim()) return
@@ -141,8 +166,8 @@ export default function QaAgentPage() {
       let responseContent: string
       let sources: string[] = []
 
-      // Try backend first
-      const res = await queryRAG(question, newHistory.slice(-10))
+      // Try backend first — pass the API key if the user provided one
+      const res = await queryRAG(question, newHistory.slice(-10), apiKey || undefined)
       responseContent =
         res.data?.answer || res.data?.response || res.data?.content || 'No response received.'
       sources = res.data?.sources || res.data?.citations || []
@@ -223,6 +248,44 @@ export default function QaAgentPage() {
             Clear Chat
           </button>
         )}
+      </div>
+
+      {/* API Key Input */}
+      <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 mb-4 shrink-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Key className="w-4 h-4 text-amber-400 shrink-0" />
+          <span className="text-xs text-slate-300 font-medium">Anthropic API Key:</span>
+          <div className="relative flex-1 min-w-[240px]">
+            <input
+              type={showKey ? 'text' : 'password'}
+              value={apiKey}
+              onChange={(e) => { setApiKey(e.target.value); setKeySaved(false) }}
+              placeholder="sk-ant-api03-..."
+              className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg pl-3 pr-9 py-1.5 text-xs font-mono focus:outline-none focus:border-emerald-500"
+            />
+            <button
+              type="button"
+              onClick={() => setShowKey((s) => !s)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+              aria-label={showKey ? 'Hide API key' : 'Show API key'}
+            >
+              {showKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+          <button
+            onClick={handleSaveKey}
+            className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+              keySaved
+                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+            }`}
+          >
+            {keySaved ? (<><Check className="w-3.5 h-3.5" /> Saved</>) : 'Save Key'}
+          </button>
+        </div>
+        <p className="text-[10px] text-slate-500 mt-1.5 ml-6">
+          Stored locally in your browser only. Sent with each chat request to power Claude responses.
+        </p>
       </div>
 
       {/* Error banner */}

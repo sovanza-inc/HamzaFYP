@@ -90,13 +90,13 @@ function MiniSparkline({ data, color }: { data: number[]; color: string }) {
 
 export default function ComparePage() {
   const [selectedModel, setSelectedModel] = useState('Ensemble')
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10))
   const [loading, setLoading] = useState(false)
   const [results, setResults] = useState<CityResult[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const parseResponse = (res: { data: Record<string, unknown> }, city: string, model: string): CityResult => {
     const d = res.data
-    // Backend returns { city, results: [{model, predicted_kwh, r2, hourly_predictions}], best_model }
     const modelKey = model.toLowerCase()
     const allResults = Array.isArray(d?.results) ? d.results as Record<string, unknown>[] : []
     const modelResult = allResults.find((r) => String(r.model).toLowerCase() === modelKey) ?? allResults[0] ?? {}
@@ -109,36 +109,31 @@ export default function ComparePage() {
     }
   }
 
-  const handleCompare = async () => {
+  const runCompare = async (model: string, date: string) => {
     setLoading(true)
     setError(null)
     try {
-      const responses = await Promise.all(CITIES.map((city) => compareModels(city)))
-      setResults(responses.map((res, i) => parseResponse(res, CITIES[i], selectedModel)))
+      const responses = await Promise.all(CITIES.map((city) => compareModels(city, date)))
+      setResults(responses.map((res, i) => parseResponse(res, CITIES[i], model)))
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error'
       setError(`Backend unreachable (${msg}). Showing estimated comparison data.`)
-      setResults(CITIES.map((city) => generateMockResult(city, selectedModel)))
+      setResults(CITIES.map((city) => generateMockResult(city, model)))
     } finally {
       setLoading(false)
     }
   }
 
-  const handleModelChange = async (model: string) => {
+  const handleCompare = () => runCompare(selectedModel, selectedDate)
+
+  const handleModelChange = (model: string) => {
     setSelectedModel(model)
-    if (results) {
-      setLoading(true)
-      setError(null)
-      try {
-        const responses = await Promise.all(CITIES.map((city) => compareModels(city)))
-        setResults(responses.map((res, i) => parseResponse(res, CITIES[i], model)))
-      } catch {
-        setResults(CITIES.map((city) => generateMockResult(city, model)))
-        setError('Backend unreachable. Showing estimated comparison data.')
-      } finally {
-        setLoading(false)
-      }
-    }
+    if (results) runCompare(model, selectedDate)
+  }
+
+  const handleDateChange = (date: string) => {
+    setSelectedDate(date)
+    if (results) runCompare(selectedModel, date)
   }
 
   const highestCity = results?.reduce((a, b) => (a.predicted_kwh > b.predicted_kwh ? a : b))
@@ -167,7 +162,15 @@ export default function ComparePage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Date picker */}
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => handleDateChange(e.target.value)}
+            className="bg-slate-800 border border-slate-700 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30"
+          />
+
           {/* Model selector */}
           <div className="relative">
             <select
