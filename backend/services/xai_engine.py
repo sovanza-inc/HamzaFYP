@@ -7,6 +7,8 @@ All heavy imports (shap, lime, tensorflow) are deferred to method call time
 so the server starts even when those packages are unavailable.
 """
 
+from __future__ import annotations
+
 import logging
 import os
 from pathlib import Path

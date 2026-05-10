@@ -5,12 +5,11 @@ import {
   TrendingUp,
   RefreshCw,
   Radio,
-  Database,
   AlertCircle,
   CheckCircle,
   ChevronDown,
 } from 'lucide-react'
-import { getLiveForecast, compareModels } from '@/src/lib/api'
+import { getLiveForecast } from '@/src/lib/api'
 import ForecastChart from '@/src/components/ForecastChart'
 import ModelComparison from '@/src/components/ModelComparison'
 import WeatherWidget from '@/src/components/WeatherWidget'
@@ -62,7 +61,6 @@ export default function ForecastPage() {
   const { toast } = useToast()
   const [city, setCity] = useState('Lahore')
   const [model, setModel] = useState('Ensemble')
-  const [useLive, setUseLive] = useState(false)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<ForecastResult | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -73,36 +71,16 @@ export default function ForecastPage() {
     setResult(null)
 
     try {
-      let predictions: number[] = []
-      let dailyKwh = 0
-
-      if (useLive) {
-        // Live mode — fetch real weather and run the selected model
-        const res = await getLiveForecast(city, model)
-        const data = res.data
-        predictions =
-          data?.hourly_predictions ||
-          data?.predictions ||
-          Array.from({ length: 24 }, (_, i) =>
-            parseFloat((0.42 + Math.sin((i * Math.PI) / 12) * 0.28).toFixed(4))
-          )
-        dailyKwh = data?.predicted_kwh ?? predictions.reduce((s, v) => s + v, 0)
-      } else {
-        // Dataset mode — use the integrated comparison endpoint to get a
-        // city- and model-specific prediction grounded in training data
-        const res = await compareModels(city)
-        const allResults = (res.data?.results ?? []) as Array<{
-          model: string
-          predicted_kwh: number
-          hourly_predictions: number[]
-        }>
-        const modelKey = model.toLowerCase()
-        const modelResult =
-          allResults.find((r) => r.model.toLowerCase() === modelKey) || allResults[0]
-        if (!modelResult) throw new Error('No model results returned by API')
-        predictions = modelResult.hourly_predictions
-        dailyKwh = modelResult.predicted_kwh
-      }
+      const res = await getLiveForecast(city, model)
+      const data = res.data
+      const predictions: number[] =
+        data?.hourly_predictions ||
+        data?.predictions ||
+        Array.from({ length: 24 }, (_, i) =>
+          parseFloat((0.42 + Math.sin((i * Math.PI) / 12) * 0.28).toFixed(4))
+        )
+      const dailyKwh: number =
+        data?.predicted_kwh ?? predictions.reduce((s, v) => s + v, 0)
 
       const lower = predictions.map((v) => parseFloat((v * 0.92).toFixed(4)))
       const upper = predictions.map((v) => parseFloat((v * 1.08).toFixed(4)))
@@ -156,7 +134,7 @@ export default function ForecastPage() {
           Forecast Configuration
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           {/* City Selector */}
           <div>
             <label className="text-xs text-slate-400 font-medium block mb-1.5">City</label>
@@ -194,56 +172,17 @@ export default function ForecastPage() {
               <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
           </div>
-
-          {/* Data Source Toggle */}
-          <div className="md:col-span-2">
-            <label className="text-xs text-slate-400 font-medium block mb-1.5">Data Source</label>
-            <div className="flex rounded-lg overflow-hidden border border-slate-600">
-              <button
-                onClick={() => setUseLive(false)}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-                  !useLive
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-slate-700 text-slate-400 hover:text-slate-300'
-                }`}
-              >
-                <Database className="w-4 h-4" />
-                Demo Data
-              </button>
-              <button
-                onClick={() => setUseLive(true)}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-                  useLive
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-700 text-slate-400 hover:text-slate-300'
-                }`}
-              >
-                <Radio className="w-4 h-4" />
-                Live Weather
-              </button>
-            </div>
-          </div>
         </div>
 
-        {/* Source description */}
+        {/* Live weather notice */}
         <div className="mb-5 p-3 rounded-lg bg-slate-700/50 border border-slate-600">
-          {useLive ? (
-            <p className="text-blue-400 text-xs flex items-center gap-2">
-              <Radio className="w-3.5 h-3.5 shrink-0" />
-              <span>
-                <strong>Live Weather Mode:</strong> Fetches real-time weather data for {city} and
-                runs the {model} model on it. Requires backend connection.
-              </span>
-            </p>
-          ) : (
-            <p className="text-emerald-400 text-xs flex items-center gap-2">
-              <Database className="w-3.5 h-3.5 shrink-0" />
-              <span>
-                <strong>Demo Mode:</strong> Uses pre-loaded test data to generate a forecast. Works
-                offline with mock data if backend is unavailable.
-              </span>
-            </p>
-          )}
+          <p className="text-blue-400 text-xs flex items-center gap-2">
+            <Radio className="w-3.5 h-3.5 shrink-0" />
+            <span>
+              <strong>Live Weather:</strong> Fetches real-time weather data for {city} and
+              runs the {model} model on it.
+            </span>
+          </p>
         </div>
 
         {/* Run button */}
