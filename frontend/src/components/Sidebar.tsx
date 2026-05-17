@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard,
   TrendingUp,
@@ -13,7 +13,9 @@ import {
   X,
   BarChart2,
   Target,
+  LogOut,
 } from 'lucide-react'
+import { logout } from '@/src/components/AuthShell'
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -25,6 +27,12 @@ const navItems = [
 ]
 
 function NavContent({ pathname, onClose }: { pathname: string; onClose?: () => void }) {
+  const router = useRouter()
+  const handleLogout = () => {
+    logout()
+    onClose?.()
+    router.replace('/login')
+  }
   return (
     <>
       {/* Logo */}
@@ -73,6 +81,13 @@ function NavContent({ pathname, onClose }: { pathname: string; onClose?: () => v
 
       {/* Footer */}
       <div className="p-4 border-t border-slate-800">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-all mb-3"
+        >
+          <LogOut className="w-4 h-4 shrink-0" />
+          Sign out
+        </button>
         <div className="bg-slate-800 rounded-lg p-3 mb-3">
           <p className="text-xs text-slate-400 font-medium mb-1.5">Supported Cities</p>
           <div className="flex flex-wrap gap-1">

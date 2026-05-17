@@ -1,9 +1,8 @@
 import type { Metadata } from 'next'
 import { Bricolage_Grotesque } from 'next/font/google'
 import './globals.css'
-import Sidebar from '@/src/components/Sidebar'
 import { ToastProvider } from '@/src/components/Toast'
-import ThemeToggle from '@/src/components/ThemeToggle'
+import AuthShell from '@/src/components/AuthShell'
 
 const bricolage = Bricolage_Grotesque({
   subsets: ['latin'],
@@ -67,13 +66,7 @@ export default function RootLayout({
     <html lang="en" className={`dark ${bricolage.variable}`}>
       <body className="bg-slate-950 text-white min-h-screen antialiased font-[family-name:var(--font-bricolage)]">
         <ToastProvider>
-          <Sidebar />
-          <main className="md:ml-64 pt-14 md:pt-0 min-h-screen overflow-x-hidden">
-            <div className="p-4 sm:p-6 lg:p-8 min-h-screen">
-              {children}
-            </div>
-          </main>
-          <ThemeToggle />
+          <AuthShell>{children}</AuthShell>
         </ToastProvider>
       </body>
     </html>
