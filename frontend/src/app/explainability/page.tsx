@@ -18,17 +18,6 @@ import {
   CheckCircle,
 } from 'lucide-react'
 import { compareInsights } from '@/src/lib/api'
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-  Legend,
-} from 'recharts'
 
 const MODELS = ['Ensemble', 'CNN', 'LSTM', 'GRU']
 const CITIES = ['Lahore', 'Karachi', 'Islamabad', 'Multan', 'Peshawar', 'Skardu']
@@ -163,29 +152,6 @@ export default function ExplainabilityPage() {
   }
 
   const aIsHigher = data ? data.a.avg_daily_kwh >= data.b.avg_daily_kwh : false
-
-  // Build chart data from factor importances
-  const factorChartData = data
-    ? data.a.factors.map((fa) => {
-        const fb = data.b.factors.find((f) => f.feature === fa.feature)
-        return {
-          feature: fa.feature,
-          [`${data.a.city} · ${data.a.month_name}`]: fa.importance,
-          [`${data.b.city} · ${data.b.month_name}`]: fb?.importance ?? 0,
-        }
-      })
-    : []
-
-  const consumptionChartData = data
-    ? [
-        { metric: 'Avg Daily',  [data.a.city + ' ' + data.a.month_name]: data.a.avg_daily_kwh,  [data.b.city + ' ' + data.b.month_name]: data.b.avg_daily_kwh },
-        { metric: 'Peak Day',   [data.a.city + ' ' + data.a.month_name]: data.a.peak_daily_kwh, [data.b.city + ' ' + data.b.month_name]: data.b.peak_daily_kwh },
-        { metric: 'Lowest Day', [data.a.city + ' ' + data.a.month_name]: data.a.lowest_daily_kwh, [data.b.city + ' ' + data.b.month_name]: data.b.lowest_daily_kwh },
-      ]
-    : []
-
-  const aLabel = data ? `${data.a.city} · ${data.a.month_name}` : ''
-  const bLabel = data ? `${data.b.city} · ${data.b.month_name}` : ''
 
   return (
     <div className="space-y-8 fade-in">
@@ -372,76 +338,6 @@ export default function ExplainabilityPage() {
             </div>
           </div>
 
-          {/* Consumption comparison chart */}
-          <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
-            <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-emerald-400" />
-              Consumption Comparison
-            </h3>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={consumptionChartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                <XAxis dataKey="metric" stroke="#94a3b8" tick={{ fontSize: 11 }} />
-                <YAxis stroke="#94a3b8" tick={{ fontSize: 11 }} unit=" kWh" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#1e293b',
-                    border: '1px solid #334155',
-                    borderRadius: '8px',
-                    color: '#e2e8f0',
-                    fontSize: '12px',
-                  }}
-                />
-                <Legend wrapperStyle={{ fontSize: '12px' }} />
-                <Bar dataKey={aLabel} fill="#10b981" radius={[6, 6, 0, 0]} />
-                <Bar dataKey={bLabel} fill="#3b82f6" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Factor importance comparison */}
-          <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
-            <h3 className="text-white font-semibold mb-1 flex items-center gap-2">
-              <Brain className="w-4 h-4 text-purple-400" />
-              Which factors drive the difference
-            </h3>
-            <p className="text-xs text-slate-500 mb-4">
-              Feature attribution from the {model} model — taller bars matter more for predictions in that period
-            </p>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={factorChartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                <XAxis dataKey="feature" stroke="#94a3b8" tick={{ fontSize: 11 }} angle={-15} textAnchor="end" height={50} />
-                <YAxis stroke="#94a3b8" tick={{ fontSize: 11 }} domain={[0, 0.4]} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#1e293b',
-                    border: '1px solid #334155',
-                    borderRadius: '8px',
-                    color: '#e2e8f0',
-                    fontSize: '12px',
-                  }}
-                />
-                <Legend wrapperStyle={{ fontSize: '12px' }} />
-                <Bar dataKey={`${data.a.city} · ${data.a.month_name}`} fill="#10b981" radius={[4, 4, 0, 0]} />
-                <Bar dataKey={`${data.b.city} · ${data.b.month_name}`} fill="#3b82f6" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-
-            {data.factor_diffs.length > 0 && (
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-                {data.factor_diffs.map((fd) => (
-                  <div key={fd.feature} className="bg-slate-700/40 rounded-lg p-3 border border-slate-600/40">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-emerald-400 text-xs font-bold uppercase">{fd.feature}</span>
-                      <span className="text-[10px] text-slate-500">{fd.winner}</span>
-                    </div>
-                    <p className="text-xs text-slate-300">{fd.note}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
 
           {/* Narrative explanation */}
           <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">

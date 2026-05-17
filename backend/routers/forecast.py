@@ -6,7 +6,7 @@ import logging
 import math
 import random
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -351,7 +351,7 @@ _MODEL_DEMO = {
 }
 
 
-def _demo_model_result(city: str, model: str, date_str: str | None = None) -> dict:
+def _demo_model_result(city: str, model: str, date_str: Optional[str] = None) -> dict:
     """Produce city-, model-, and date-specific deterministic values.
 
     Each (city, model, date) combination produces a unique kWh — values vary
@@ -389,11 +389,11 @@ def _demo_model_result(city: str, model: str, date_str: str | None = None) -> di
 
 class CompareRequest(BaseModel):
     city: str = Field(default="Lahore", description="Target Pakistani city.")
-    date: str | None = Field(
+    date: Optional[str] = Field(
         default=None,
         description="Optional ISO date YYYY-MM-DD. Drives season/day-of-week variation.",
     )
-    input_sequence: list[list[float]] | None = Field(
+    input_sequence: Optional[list[list[float]]] = Field(
         default=None,
         description="Optional 2-D input sequence. When omitted, dataset-grounded values are used.",
     )

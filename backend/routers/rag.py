@@ -7,7 +7,7 @@ import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -48,11 +48,11 @@ class RAGQuery(BaseModel):
         default_factory=list,
         description="Previous conversation turns: [{role: str, content: str}, ...]",
     )
-    context_filter: str | None = Field(
+    context_filter: Optional[str] = Field(
         default=None,
         description="Optional topic filter, e.g. 'solar', 'load_shedding', 'efficiency'.",
     )
-    api_key: str | None = Field(
+    api_key: Optional[str] = Field(
         default=None,
         description="Anthropic API key — overrides the server's ANTHROPIC_API_KEY.",
     )
@@ -69,7 +69,7 @@ class FeedbackRequest(BaseModel):
     question: str = Field(..., description="Original question that was asked.")
     answer: str = Field(..., description="Answer that was given by the system.")
     rating: int = Field(..., ge=1, le=5, description="User rating from 1 (poor) to 5 (excellent).")
-    comment: str | None = Field(default=None, description="Optional free-text comment.")
+    comment: Optional[str] = Field(default=None, description="Optional free-text comment.")
 
 
 class IndexRebuildResponse(BaseModel):

@@ -5,7 +5,7 @@ Architecture
 ------------
 * Embedder  : sentence-transformers/all-MiniLM-L6-v2
 * Vector DB : FAISS IndexFlatIP (cosine similarity via L2-normalised vectors)
-* LLM       : Anthropic claude-sonnet-4-5
+* LLM       : Anthropic claude-sonnet-4-6
 
 The engine is designed to degrade gracefully:
   - No sentence-transformers  → keyword fallback (no vector search)
@@ -290,7 +290,7 @@ class RAGEngine:
             messages.append({"role": "user", "content": question})
 
             response = client.messages.create(
-                model="claude-sonnet-4-5",
+                model="claude-sonnet-4-6",
                 max_tokens=1024,
                 system=system_prompt,
                 messages=messages,
@@ -307,7 +307,7 @@ class RAGEngine:
             return {
                 "answer": answer_text,
                 "sources": sources,
-                "model_used": "claude-sonnet-4-5",
+                "model_used": "claude-sonnet-4-6",
                 "tokens_used": tokens_used,
             }
 
