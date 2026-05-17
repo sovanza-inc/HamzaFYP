@@ -37,3 +37,8 @@ frontend/.env.local
 
 # Logs
 *.log
+
+# Presentation/document binaries (kept out of the public repo)
+*.pptx
+*.pdf
+*.docx
