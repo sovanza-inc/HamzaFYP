@@ -117,8 +117,8 @@ export default function ComparePage() {
       setResults(responses.map((res, i) => parseResponse(res, CITIES[i], model)))
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error'
-      setError(`Backend unreachable (${msg}). Showing estimated comparison data.`)
-      setResults(CITIES.map((city) => generateMockResult(city, model)))
+      setError(`Comparison failed: ${msg}. Make sure the backend is running.`)
+      setResults(null)
     } finally {
       setLoading(false)
     }
